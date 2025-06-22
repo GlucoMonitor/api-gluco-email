@@ -5,13 +5,16 @@ import base64
 from flask import Flask, request, jsonify, redirect, session, url_for
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")  # Replace for production
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-CLIENT_SECRETS_FILE = 'credentials.json'
+# CLIENT_SECRETS_FILE = 'credentials.json'
+CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
 TOKEN_FILE = 'token.pickle'
 
 
@@ -34,14 +37,34 @@ def extract_message_body(payload):
     return 'No readable body found.'
 
 
+# def get_gmail_service():
+#     if not os.path.exists(TOKEN_FILE):
+#         return None  # No token yet
+
+#     with open(TOKEN_FILE, 'rb') as token:
+#         creds = pickle.load(token)
+
+#     return build('gmail', 'v1', credentials=creds)
+
+
 def get_gmail_service():
-    if not os.path.exists(TOKEN_FILE):
-        return None  # No token yet
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, 'rb') as token:
+            creds = pickle.load(token)
 
-    with open(TOKEN_FILE, 'rb') as token:
-        creds = pickle.load(token)
+    # Refresh the token if it's expired and a refresh token is available
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
 
-    return build('gmail', 'v1', credentials=creds)
+        # Save the refreshed token
+        with open(TOKEN_FILE, 'wb') as token:
+            pickle.dump(creds, token)
+
+    if creds and creds.valid:
+        return build('gmail', 'v1', credentials=creds)
+
+    return None
 
 
 @app.route('/')
@@ -53,8 +76,9 @@ def index():
 
 @app.route('/authorize')
 def authorize():
+    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
     flow = Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE,
+        client_config,
         scopes=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True)
     )
@@ -66,17 +90,20 @@ def authorize():
     session['flow_state'] = state
     return redirect(auth_url)
 
+def get_redirect_uri():
+    # Use environment variable or default to localhost
+    return os.environ.get('REDIRECT_URI', url_for('oauth2callback', _external=True))
 
 @app.route('/oauth2callback')
 def oauth2callback():
     if 'flow_state' not in session:
         return "Session expired or /authorize was not visited first.", 400
-
+    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
     flow = Flow.from_client_secrets_file(
-        CLIENT_SECRETS_FILE,
+        client_config,
         scopes=SCOPES,
         state=session['flow_state'],
-        redirect_uri=url_for('oauth2callback', _external=True)
+        redirect_uri=get_redirect_uri()
     )
     flow.fetch_token(authorization_response=request.url)
 
@@ -96,6 +123,7 @@ def list_emails():
 
     try:
         sender_filter = request.args.get('sender_email')
+        cc_filter = request.args.get('cc_email')
         results = service.users().messages().list(userId='me', maxResults=20).execute()
         messages = results.get('messages', [])
 
@@ -108,7 +136,13 @@ def list_emails():
             from_header = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
             date_header = next((h['value'] for h in headers if h['name'] == 'Date'), 'Unknown')
 
+            cc_header = next((h['value'] for h in headers if h['name'] == 'Cc'), '')
+
+
             if sender_filter and sender_filter.lower() not in from_header.lower():
+                continue
+
+            if cc_filter and cc_filter.lower() not in cc_header.lower():
                 continue
 
             body = extract_message_body(msg_detail['payload'])
