@@ -74,15 +74,24 @@ def index():
         return redirect('/authorize')
     return "Gmail API is authorized. Use /emails or /email/<id>."
 
+def create_flow(state=None):
+    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
+    return Flow.from_client_config(
+        client_config,
+        scopes=SCOPES,
+        redirect_uri=url_for('oauth2callback', _external=True),
+        state=state
+    )
 
 @app.route('/authorize')
 def authorize():
-    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
-    flow = Flow.from_client_secrets_file(
-        client_config,
-        scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True)
-    )
+    # client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
+    # flow = Flow.from_client_secrets_file(
+    #     client_config,
+    #     scopes=SCOPES,
+    #     redirect_uri=url_for('oauth2callback', _external=True)
+    # )
+    flow = create_flow()
     auth_url, state = flow.authorization_url(
         prompt='consent',
         access_type='offline',
@@ -99,13 +108,14 @@ def get_redirect_uri():
 def oauth2callback():
     if 'flow_state' not in session:
         return "Session expired or /authorize was not visited first.", 400
-    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
-    flow = Flow.from_client_secrets_file(
-        client_config,
-        scopes=SCOPES,
-        state=session['flow_state'],
-        redirect_uri=get_redirect_uri()
-    )
+    # client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
+    # flow = Flow.from_client_config(
+    #     client_config,
+    #     scopes=SCOPES,
+    #     state=session['flow_state'],
+    #     redirect_uri=get_redirect_uri()
+    # )
+    flow = create_flow()
     flow.fetch_token(authorization_response=request.url)
 
     creds = flow.credentials
