@@ -1,13 +1,13 @@
 {
-    "installed": {
-        "client_id": "1000742179005-b2fdavgdol31gaak5625v3j5htcmvc3k.apps.googleusercontent.com",
+    "web": {
+        "client_id": "1000742179005-v51hk445be9fbaej934flck57cgqdt59.apps.googleusercontent.com",
         "project_id": "glucosemonitor-461918",
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_secret": "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",
+        "client_secret": "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",
         "redirect_uris": [
-            "http://localhost"
+            "https://api-gluco-email.onrender.com/oauth2callback"
         ]
     }
 }
