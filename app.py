@@ -93,7 +93,7 @@ def authorize():
     # )
     flow = create_flow()
     auth_url, state = flow.authorization_url(
-        prompt='consent',
+        # prompt='consent',
         access_type='offline',
         include_granted_scopes='true'
     )
