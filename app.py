@@ -16,7 +16,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CLIENT_SECRETS_FILE = 'credentials.json'
 # CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
-TOKEN_FILE = 'secrets/token.pickle'
+TOKEN_FILE = '/etc/secrets/token.pickle'
 
 
 def decode_base64url(data):
@@ -51,11 +51,15 @@ def extract_message_body(payload):
 def get_gmail_service():
     creds = None
     if os.path.exists(TOKEN_FILE):
+        print("Token file exists:", os.path.exists(TOKEN_FILE))
         with open(TOKEN_FILE, 'rb') as token:
             creds = pickle.load(token)
 
     # Refresh the token if it's expired and a refresh token is available
+  
     if creds and creds.expired and creds.refresh_token:
+        print("Token expired:", creds.expired)
+        print("Has refresh token:", creds.refresh_token is not None)
         creds.refresh(Request())
 
         # Save the refreshed token
