@@ -14,9 +14,9 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")  # Replace
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-# CLIENT_SECRETS_FILE = 'credentials.json'
-CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
-TOKEN_FILE = 'token.pickle'
+CLIENT_SECRETS_FILE = 'credentials.json'
+# CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
+TOKEN_FILE = 'secrets/token.pickle'
 
 
 def decode_base64url(data):
@@ -75,13 +75,21 @@ def index():
     return "Gmail API is authorized. Use /emails or /email/<id>."
 
 def create_flow(state=None):
-    client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
-    return Flow.from_client_config(
-        client_config,
-        scopes=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True),
-        state=state
-    )
+    if "GOOGLE_OAUTH_CREDENTIALS_JSON" in os.environ:
+        client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
+        return Flow.from_client_config(
+            client_config,
+            scopes=SCOPES,
+            redirect_uri=url_for('oauth2callback', _external=True),
+            state=state
+        )
+    else:
+        return Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE,
+            scopes=SCOPES,
+            redirect_uri=url_for('oauth2callback', _external=True),
+            state=state
+        )
 
 @app.route('/authorize')
 def authorize():
