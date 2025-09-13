@@ -42,16 +42,6 @@ def extract_message_body(payload):
     return 'No readable body found.'
 
 
-# def get_gmail_service():
-#     if not os.path.exists(TOKEN_FILE):
-#         return None  # No token yet
-
-#     with open(TOKEN_FILE, 'rb') as token:
-#         creds = pickle.load(token)
-
-#     return build('gmail', 'v1', credentials=creds)
-
-
 def get_gmail_service():
     creds = None
     if os.path.exists(TOKEN_FILE_WRITE):
@@ -74,7 +64,7 @@ def get_gmail_service():
 
 @app.route('/')
 def index():
-    if not os.path.exists(TOKEN_FILE):
+    if not os.path.exists(TOKEN_FILE_READ):
         return redirect('/authorize')
     return "Gmail API is authorized. Use /emails or /email/<id>."
 
@@ -140,7 +130,7 @@ def oauth2callback():
     flow.fetch_token(authorization_response=request.url)
 
     creds = flow.credentials
-    with open(TOKEN_FILE, 'wb') as token:
+    with open(TOKEN_FILE_READ, 'wb') as token:
         pickle.dump(creds, token)
     with open('token.json', 'w') as token:
         token.write(creds.to_json())
