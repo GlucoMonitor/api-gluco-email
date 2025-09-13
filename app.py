@@ -20,7 +20,8 @@ CLIENT_SECRETS_FILE = 'credentials.json'
 
 
 IS_RENDER = os.getenv("RENDER", "false").lower() == "true"
-TOKEN_FILE = '/etc/secrets/token.json' if not IS_RENDER else '/tmp/token.json'
+TOKEN_FILE_READ = '/etc/secrets/token.json'
+TOKEN_FILE_WRITE = '/tmp/token.json'
 
 def decode_base64url(data):
     return base64.urlsafe_b64decode(data + '===').decode('utf-8', errors='ignore')
@@ -53,13 +54,16 @@ def extract_message_body(payload):
 
 def get_gmail_service():
     creds = None
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, 'r') as token:
+    if os.path.exists(TOKEN_FILE_WRITE):
+        with open(TOKEN_FILE_WRITE, 'r') as token:
+            creds = Credentials.from_authorized_user_info(json.load(token), SCOPES)
+    elif os.path.exists(TOKEN_FILE_READ):
+        with open(TOKEN_FILE_READ, 'r') as token:
             creds = Credentials.from_authorized_user_info(json.load(token), SCOPES)
 
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        with open('/tmp/token.json', 'w') as token:
+        with open(TOKEN_FILE_WRITE, 'w') as token:
             token.write(creds.to_json())
 
     if creds and creds.valid:
