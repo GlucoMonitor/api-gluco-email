@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, redirect, session, url_for
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 
 app = Flask(__name__)
@@ -16,7 +17,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CLIENT_SECRETS_FILE = 'credentials.json'
 # CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
-TOKEN_FILE = '/etc/secrets/token.pickle'
+TOKEN_FILE = '/etc/secrets/token.json'
 
 
 def decode_base64url(data):
@@ -51,20 +52,13 @@ def extract_message_body(payload):
 def get_gmail_service():
     creds = None
     if os.path.exists(TOKEN_FILE):
-        print("Token file exists:", os.path.exists(TOKEN_FILE))
-        with open(TOKEN_FILE, 'rb') as token:
-            creds = pickle.load(token)
+        with open(TOKEN_FILE, 'r') as token:
+            creds = Credentials.from_authorized_user_info(json.load(token), SCOPES)
 
-    # Refresh the token if it's expired and a refresh token is available
-  
     if creds and creds.expired and creds.refresh_token:
-        print("Token expired:", creds.expired)
-        print("Has refresh token:", creds.refresh_token is not None)
         creds.refresh(Request())
-
-        # Save the refreshed token
-        with open(TOKEN_FILE, 'wb') as token:
-            pickle.dump(creds, token)
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
 
     if creds and creds.valid:
         return build('gmail', 'v1', credentials=creds)
@@ -133,6 +127,8 @@ def oauth2callback():
     creds = flow.credentials
     with open(TOKEN_FILE, 'wb') as token:
         pickle.dump(creds, token)
+    with open('token.json', 'w') as token:
+        token.write(creds.to_json())
 
     return redirect('/')
 
