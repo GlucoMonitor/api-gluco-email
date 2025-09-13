@@ -17,8 +17,10 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CLIENT_SECRETS_FILE = 'credentials.json'
 # CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
-TOKEN_FILE = '/etc/secrets/token.json'
 
+
+IS_RENDER = os.getenv("RENDER", "false").lower() == "true"
+TOKEN_FILE = '/etc/secrets/token.json' if not IS_RENDER else '/tmp/token.json'
 
 def decode_base64url(data):
     return base64.urlsafe_b64decode(data + '===').decode('utf-8', errors='ignore')
@@ -57,7 +59,7 @@ def get_gmail_service():
 
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        with open(TOKEN_FILE, 'w') as token:
+        with open('/tmp/token.json', 'w') as token:
             token.write(creds.to_json())
 
     if creds and creds.valid:
