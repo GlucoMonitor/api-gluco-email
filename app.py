@@ -17,7 +17,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 CLIENT_SECRETS_FILE = 'credentials.json'
 # CLIENT_SECRETS_FILE = os.environ.get("GOOGLE_OAUTH_CREDENTIALS_JSON")
-TOKEN_FILE = '/etc/secrets/token.json'
+TOKEN_FILE = 'secrets/token.json'
 
 
 def decode_base64url(data):
@@ -75,19 +75,28 @@ def index():
 def create_flow(state=None):
     if "GOOGLE_OAUTH_CREDENTIALS_JSON" in os.environ:
         client_config = json.loads(os.environ["GOOGLE_OAUTH_CREDENTIALS_JSON"])
-        return Flow.from_client_config(
+        flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
             redirect_uri=url_for('oauth2callback', _external=True),
             state=state
         )
     else:
-        return Flow.from_client_secrets_file(
+        flow = Flow.from_client_secrets_file(
             CLIENT_SECRETS_FILE,
             scopes=SCOPES,
             redirect_uri=url_for('oauth2callback', _external=True),
             state=state
         )
+
+    # ✅ Ensure refresh_token is requested
+    flow.redirect_uri = url_for('oauth2callback', _external=True)
+    flow.include_granted_scopes = True
+    flow.access_type = 'offline'
+    flow.prompt = 'consent'
+
+    return flow
+
 
 @app.route('/authorize')
 def authorize():
